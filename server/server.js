@@ -21,11 +21,6 @@ const connectDB = require('./config/db');
 // Create Express app
 const app = express();
 
-// Middleware
-const cors = require('cors');
-
-// ... your other app setup ...
-const app = express();
 
 const corsOptions = {
   origin: process.env.FRONTEND_URL || "http://localhost:5173", // Vercel will provide the URL
