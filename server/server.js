@@ -22,7 +22,17 @@ const connectDB = require('./config/db');
 const app = express();
 
 // Middleware
-app.use(cors());
+const cors = require('cors');
+
+// ... your other app setup ...
+const app = express();
+
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:5173", // Vercel will provide the URL
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Connect to MongoDB
