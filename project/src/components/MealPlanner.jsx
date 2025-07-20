@@ -17,7 +17,6 @@ const MealPlanner = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch both in parallel for faster loading
     Promise.all([fetchMealPlans(), fetchRecipes()]).then(() => {
       setLoading(false);
     });
@@ -25,9 +24,9 @@ const MealPlanner = () => {
 
   const fetchMealPlans = async () => {
     try {
-      const response = await plannerAPI.getMealPlans();
-      // FIX: Expect a direct array from the API
-      setMealPlans(response.data || []);
+      // FIX: The API now returns the data array directly.
+      const fetchedMealPlans = await plannerAPI.getMealPlans();
+      setMealPlans(fetchedMealPlans || []);
     } catch (error) {
       console.error('Failed to fetch meal plans:', error);
     }
@@ -35,10 +34,10 @@ const MealPlanner = () => {
 
   const fetchRecipes = async () => {
     try {
-      const response = await recipeAPI.getRecipes();
-      // FIX: Expect a direct array from the API
-      setRecipes(response.data || []);
-    } catch (error) {
+      // FIX: The API now returns the data array directly.
+      const fetchedRecipes = await recipeAPI.getRecipes();
+      setRecipes(fetchedRecipes || []);
+    } catch (error)      {
       console.error('Failed to fetch recipes:', error);
     }
   };
@@ -53,9 +52,11 @@ const MealPlanner = () => {
 
   const handleAddMeal = async () => {
     try {
-      const response = await plannerAPI.addMealPlan(formData);
-      // FIX: Expect the new meal plan object directly
-      setMealPlans([...mealPlans, response.data]);
+      // FIX: The API now returns the new meal plan object directly.
+      const newMealPlan = await plannerAPI.addMealPlan(formData);
+      // To display the recipe title immediately, we need to find it in our existing recipes list
+      const recipeDetails = recipes.find(r => r._id === newMealPlan.recipe);
+      setMealPlans([...mealPlans, { ...newMealPlan, recipe: recipeDetails }]);
       closeForm();
     } catch (error) {
       console.error('Failed to add meal plan:', error);
@@ -65,9 +66,8 @@ const MealPlanner = () => {
   const handleUpdateMeal = async () => {
     if (!editingPlan) return;
     try {
-      const response = await plannerAPI.updateMealPlan(editingPlan._id, formData);
-      // FIX: Expect the updated meal plan object directly
-      const updatedPlan = response.data;
+      // FIX: The API now returns the updated meal plan object directly.
+      const updatedPlan = await plannerAPI.updateMealPlan(editingPlan._id, formData);
       setMealPlans(mealPlans.map(plan => 
         plan._id === editingPlan._id ? updatedPlan : plan
       ));
@@ -78,7 +78,7 @@ const MealPlanner = () => {
   };
 
   const handleDeleteMeal = async (planId) => {
-    // FIX: Removed window.confirm which blocks execution
+    // This function is okay as it doesn't rely on a return value.
     try {
       await plannerAPI.deleteMealPlan(planId);
       setMealPlans(mealPlans.filter(plan => plan._id !== planId));
@@ -106,7 +106,8 @@ const MealPlanner = () => {
     resetForm();
     setFormData({
       ...formData,
-      date: date ? date.toISOString().split('T')[0] : ''
+      date: date ? date.toISOString().split('T')[0] : '',
+      recipeId: recipes.length > 0 ? recipes[0]._id : '' // Pre-select first recipe
     });
     setEditingPlan(null);
     setShowAddForm(true);
@@ -136,12 +137,10 @@ const MealPlanner = () => {
     const firstDay = getFirstDayOfMonth(currentDate);
     const days = [];
 
-    // Empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="h-32"></div>);
+      days.push(<div key={`empty-${i}`} className="h-32 border border-slate-800"></div>);
     }
 
-    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
       const mealsForDay = getMealsForDate(date);
@@ -150,44 +149,26 @@ const MealPlanner = () => {
       days.push(
         <div
           key={day}
-          className={`h-32 border border-slate-700 p-2 cursor-pointer transition-colors ${
+          className={`h-32 border border-slate-700 p-2 transition-colors relative group ${
             isToday ? 'bg-indigo-600/20 border-indigo-500' : 'hover:bg-slate-700'
           }`}
-          onClick={() => openAddForm(date)}
         >
           <div className="flex justify-between items-start mb-2">
-            <span className={`text-sm font-medium ${isToday ? 'text-indigo-400' : 'text-white'}`}>
-              {day}
-            </span>
-            <Plus className="w-4 h-4 text-slate-400 hover:text-white" />
+            <span className={`text-sm font-medium ${isToday ? 'text-indigo-400' : 'text-white'}`}>{day}</span>
+            <button onClick={() => openAddForm(date)} className="text-slate-400 hover:text-white">
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
           
           <div className="space-y-1 overflow-y-auto max-h-20">
             {mealsForDay.map((meal) => (
               <div
                 key={meal._id}
-                className="bg-slate-600 rounded p-1 text-xs cursor-pointer hover:bg-slate-500 transition-colors group"
+                className="bg-slate-600 rounded p-1 text-xs cursor-pointer hover:bg-slate-500 transition-colors"
                 onClick={(e) => { e.stopPropagation(); openEditForm(meal); }}
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-medium text-white capitalize">
-                      {meal.mealType}
-                    </div>
-                    <div className="text-slate-300 truncate">
-                      {meal.recipe?.title || 'Custom meal'}
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteMeal(meal._id);
-                    }}
-                    className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
+                <div className="font-medium text-white capitalize">{meal.mealType}</div>
+                <div className="text-slate-300 truncate">{meal.recipe?.title || 'Custom meal'}</div>
               </div>
             ))}
           </div>
@@ -228,15 +209,13 @@ const MealPlanner = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 mb-4">
+        <div className="grid grid-cols-7 gap-px text-center text-slate-400 font-medium bg-slate-700">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="p-3 text-center text-slate-400 font-medium">
-              {day}
-            </div>
+            <div key={day} className="py-2">{day}</div>
           ))}
         </div>
         
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-px bg-slate-700">
           {renderCalendar()}
         </div>
       </div>
