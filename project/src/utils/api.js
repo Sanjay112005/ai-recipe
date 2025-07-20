@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = 'https://ai-recipe-eight.vercel.app/';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
