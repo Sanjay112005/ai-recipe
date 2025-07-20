@@ -25,7 +25,7 @@ const AIRecipeGenerator = () => {
 
     try {
       const response = await aiAPI.generateRecipe(formData);
-      const recipeData = response.data;
+      const recipeData = response;
 
       if (recipeData && recipeData.title) {
         setGeneratedRecipe(recipeData);
