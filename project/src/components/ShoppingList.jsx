@@ -16,8 +16,9 @@ const ShoppingList = () => {
   const fetchShoppingList = async () => {
     setLoading(true);
     try {
-      const response = await shoppingAPI.getShoppingList();
-      setItems(response.data || []);
+      // FIX: The API now returns the data array directly.
+      const fetchedItems = await shoppingAPI.getShoppingList();
+      setItems(fetchedItems || []);
     } catch (error) {
       console.error('Failed to fetch shopping list:', error);
       setItems([]);
@@ -30,8 +31,8 @@ const ShoppingList = () => {
     if (!newItem.name.trim()) return;
     
     try {
-      const response = await shoppingAPI.addItem(newItem);
-      const newItemData = response.data;
+      // FIX: The API now returns the new item object directly.
+      const newItemData = await shoppingAPI.addItem(newItem);
       setItems([...items, newItemData]);
       setNewItem({ name: '', quantity: '', category: '' });
     } catch (error) {
@@ -40,7 +41,6 @@ const ShoppingList = () => {
   };
 
   const handleToggleDone = async (itemToToggle) => {
-    // FIX: Changed variable name to match backend field 'bought'
     const newBoughtStatus = !itemToToggle.bought;
     const originalItems = [...items];
 
@@ -50,17 +50,14 @@ const ShoppingList = () => {
     ));
 
     try {
-      // FIX: Use the dedicated toggleItemDone API function which calls PATCH /:id/toggle
-      const response = await shoppingAPI.toggleItemDone(itemToToggle._id);
-
-      // Final state update with confirmed data from the server
+      // FIX: The API now returns the updated item object directly.
+      const updatedItem = await shoppingAPI.toggleItemDone(itemToToggle._id);
       setItems(items.map(item => 
-        item._id === itemToToggle._id ? response.data : item
+        item._id === itemToToggle._id ? updatedItem : item
       ));
     } catch (error) {
       console.error('Failed to toggle item:', error);
-      // Revert the change if the API call fails
-      setItems(originalItems);
+      setItems(originalItems); // Revert on error
     }
   };
 
@@ -85,12 +82,12 @@ const ShoppingList = () => {
   const handleUpdateItem = async () => {
     if (!editingItem) return;
     try {
-      const response = await shoppingAPI.updateItem(editingItem._id, {
+      // FIX: The API now returns the updated item object directly.
+      const updatedItemData = await shoppingAPI.updateItem(editingItem._id, {
         name: editingItem.name,
         quantity: editingItem.quantity,
         category: editingItem.category
       });
-      const updatedItemData = response.data;
       setItems(items.map(item => 
         item._id === editingItem._id ? updatedItemData : item
       ));
@@ -101,7 +98,6 @@ const ShoppingList = () => {
   };
 
   const filteredItems = items.filter(item => {
-    // FIX: Filter by 'bought' instead of 'completed'
     if (filter === 'pending') return !item.bought;
     if (filter === 'completed') return item.bought;
     return true;
@@ -114,7 +110,6 @@ const ShoppingList = () => {
     return groups;
   }, {});
 
-  // FIX: Count items based on 'bought' status
   const completedCount = items.filter(item => item.bought).length;
   const totalCount = items.length;
 
@@ -257,7 +252,6 @@ const ShoppingList = () => {
                   <div
                     key={item._id}
                     className={`flex items-center justify-between p-3 rounded-lg transition-all ${
-                      // FIX: Check 'bought' status for styling
                       item.bought 
                         ? 'bg-green-500/10 border border-green-500/20' 
                         : 'bg-slate-700 hover:bg-slate-600'
@@ -267,7 +261,6 @@ const ShoppingList = () => {
                       <button
                         onClick={() => handleToggleDone(item)}
                         className={`mr-3 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-                          // FIX: Check 'bought' status for styling
                           item.bought
                             ? 'bg-green-500 border-green-500 text-white'
                             : 'border-slate-500 hover:border-green-500'
@@ -278,7 +271,6 @@ const ShoppingList = () => {
                       
                       <div className="flex-1">
                         <div className={`font-medium ${
-                          // FIX: Check 'bought' status for styling
                           item.bought ? 'text-green-400 line-through' : 'text-white'
                         }`}>
                           {item.name}
