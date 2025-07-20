@@ -1,6 +1,8 @@
-const BASE_URL = 'https://ai-recipe-eight.vercel.app/';
+// Use an environment variable for the base URL, with a fallback for local development.
+// This aligns with the best practice in the Vercel deployment guide.
+const BASE_URL = process.env.REACT_APP_API_URL || 'https://ai-recipe-eight.vercel.app';
 
-// Helper function to get auth headers
+// Helper function to get auth headers from localStorage
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
   return {
@@ -9,7 +11,7 @@ const getAuthHeaders = () => {
   };
 };
 
-// Helper function to handle API requests
+// Central helper function to handle all API requests
 const apiRequest = async (url, options = {}) => {
   const response = await fetch(`${BASE_URL}${url}`, {
     headers: getAuthHeaders(),
@@ -17,225 +19,94 @@ const apiRequest = async (url, options = {}) => {
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(errorData.message || `HTTP ${response.status}`);
+    const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
+    // Throw a consistent error object that the components can handle
+    throw { response: { data: errorData } };
   }
 
+  // Return the JSON data directly
   return response.json();
 };
 
+// --- All APIs now use the central apiRequest helper for consistency ---
+
 // Authentication API
 export const authAPI = {
-  register: async (name, email, password) => {
-    const response = await fetch(`${BASE_URL}/api/users/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw { response: { data: errorData } };
-    }
-    
-    return { data: await response.json() };
-  },
-
-  login: async (email, password) => {
-    const response = await fetch(`${BASE_URL}/api/users/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw { response: { data: errorData } };
-    }
-    
-    return { data: await response.json() };
-  }
+  // FIX: Refactored to use the apiRequest helper.
+  // This ensures consistent error handling and header management.
+  register: (name, email, password) => apiRequest('/api/users/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, password })
+  }),
+  login: (email, password) => apiRequest('/api/users/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password })
+  })
 };
 
 // AI Recipe Generation API
 export const aiAPI = {
-  generateRecipe: async (preferences) => {
-    try {
-      const data = await apiRequest('/api/ai/generate', {
-        method: 'POST',
-        body: JSON.stringify(preferences)
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  }
+  generateRecipe: (preferences) => apiRequest('/api/ai/generate', {
+    method: 'POST',
+    body: JSON.stringify(preferences)
+  })
 };
 
 // Recipe Management API
 export const recipeAPI = {
-  saveRecipe: async (recipeData) => {
-    try {
-      const data = await apiRequest('/api/recipes', {
-        method: 'POST',
-        body: JSON.stringify(recipeData)
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-  getRecipes: async () => {
-    try {
-      const data = await apiRequest('/api/recipes');
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-  updateRecipe: async (id, recipeData) => {
-    try {
-      const data = await apiRequest(`/api/recipes/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(recipeData)
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-  deleteRecipe: async (id) => {
-    try {
-      const data = await apiRequest(`/api/recipes/${id}`, {
-        method: 'DELETE'
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  }
+  saveRecipe: (recipeData) => apiRequest('/api/recipes', {
+    method: 'POST',
+    body: JSON.stringify(recipeData)
+  }),
+  getRecipes: () => apiRequest('/api/recipes'),
+  updateRecipe: (id, recipeData) => apiRequest(`/api/recipes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(recipeData)
+  }),
+  deleteRecipe: (id) => apiRequest(`/api/recipes/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 // Meal Planner API
 export const plannerAPI = {
-  getMealPlans: async () => {
-    try {
-      const data = await apiRequest('/api/planner');
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-  addMealPlan: async (planData) => {
-    try {
-      const data = await apiRequest('/api/planner', {
-        method: 'POST',
-        body: JSON.stringify(planData)
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-  updateMealPlan: async (id, planData) => {
-    try {
-      const data = await apiRequest(`/api/planner/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(planData)
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-  deleteMealPlan: async (id) => {
-    try {
-      const data = await apiRequest(`/api/planner/${id}`, {
-        method: 'DELETE'
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  }
+  getMealPlans: () => apiRequest('/api/planner'),
+  addMealPlan: (planData) => apiRequest('/api/planner', {
+    method: 'POST',
+    body: JSON.stringify(planData)
+  }),
+  updateMealPlan: (id, planData) => apiRequest(`/api/planner/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(planData)
+  }),
+  deleteMealPlan: (id) => apiRequest(`/api/planner/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 // Shopping List API
 export const shoppingAPI = {
-  getShoppingList: async () => {
-    try {
-      const data = await apiRequest('/api/shopping');
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-  addItem: async (itemData) => {
-    try {
-      const data = await apiRequest('/api/shopping', {
-        method: 'POST',
-        body: JSON.stringify(itemData)
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-  updateItem: async (id, itemData) => {
-    try {
-      const data = await apiRequest(`/api/shopping/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(itemData)
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  },
-
-
-toggleItemDone: async (id) => {
-  try {
-    const data = await apiRequest(`/api/shopping/${id}/toggle`, { 
-      method: 'PATCH'
-    });
-    return { data };
-  } catch (error) {
-    throw { response: { data: { message: error.message } } };
-  }
-},
-
-  deleteItem: async (id) => {
-    try {
-      const data = await apiRequest(`/api/shopping/${id}`, {
-        method: 'DELETE'
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  }
+  getShoppingList: () => apiRequest('/api/shopping'),
+  addItem: (itemData) => apiRequest('/api/shopping', {
+    method: 'POST',
+    body: JSON.stringify(itemData)
+  }),
+  updateItem: (id, itemData) => apiRequest(`/api/shopping/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(itemData)
+  }),
+  toggleItemDone: (id) => apiRequest(`/api/shopping/${id}/toggle`, {
+    method: 'PATCH'
+  }),
+  deleteItem: (id) => apiRequest(`/api/shopping/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 // Pantry API (if needed for future features)
 export const pantryAPI = {
-  updatePantry: async (pantryData) => {
-    try {
-      const data = await apiRequest('/api/pantry', {
-        method: 'POST',
-        body: JSON.stringify(pantryData)
-      });
-      return { data };
-    } catch (error) {
-      throw { response: { data: { message: error.message } } };
-    }
-  }
+  updatePantry: (pantryData) => apiRequest('/api/pantry', {
+    method: 'POST',
+    body: JSON.stringify(pantryData)
+  })
 };
