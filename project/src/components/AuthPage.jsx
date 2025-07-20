@@ -13,36 +13,40 @@ const AuthPage = ({ onLogin, onBack }) => {
   const [error, setError] = useState('');
 
   // In AuthPage.js
+// In your AuthPage.jsx file
+
 const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
   setError('');
 
   try {
-    let response;
+    let responseData;
     if (isLogin) {
-      response = await authAPI.login(formData.email, formData.password);
+      // FIX: The response is now the direct data object, not nested in { data: ... }
+      responseData = await authAPI.login(formData.email, formData.password);
     } else {
-      response = await authAPI.register(formData.name, formData.email, formData.password);
+      responseData = await authAPI.register(formData.name, formData.email, formData.password);
     }
 
-    // --- FIX: Validate the response before proceeding ---
-    if (response.data && response.data.token && response.data.user) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      onLogin(response.data.user); // This will now only be called with valid user data
+    // FIX: Check for token and user directly on the response data
+    if (responseData && responseData.token && responseData.user) {
+      localStorage.setItem('token', responseData.token);
+      localStorage.setItem('user', JSON.stringify(responseData.user));
+      onLogin(responseData.user);
     } else {
-      // Handle cases where the API call succeeded but didn't return expected data
+      // This is the line that was causing your error
       throw new Error('Invalid login response from server.');
     }
 
   } catch (err) {
-    setError(err.response?.data?.message || err.message || 'Authentication failed');
+    // The error object from your api.js is { response: { data: { message: '...' } } }
+    const errorMessage = err.response?.data?.message || err.message || 'Authentication failed';
+    setError(errorMessage);
   } finally {
     setLoading(false);
   }
 };
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
