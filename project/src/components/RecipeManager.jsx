@@ -27,20 +27,19 @@ const RecipeManager = () => {
   const fetchRecipes = async () => {
     setLoading(true);
     try {
-      const response = await recipeAPI.getRecipes();
-      // FIX: Handle direct array response from the API
-      setRecipes(response.data || []);
+      // FIX: The API now returns the data array directly.
+      const fetchedRecipes = await recipeAPI.getRecipes();
+      setRecipes(fetchedRecipes || []);
     } catch (error) {
       console.error('Failed to fetch recipes:', error);
-      setRecipes([]); // Set to empty array on error
+      setRecipes([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (recipeId) => {
-    // FIX: Removed window.confirm which blocks execution in this environment.
-    // A custom modal would be a good future improvement for confirmation.
+    // This function doesn't rely on a return value, so it's okay.
     try {
       await recipeAPI.deleteRecipe(recipeId);
       setRecipes(recipes.filter(recipe => recipe._id !== recipeId));
@@ -73,16 +72,15 @@ const RecipeManager = () => {
       };
 
       if (editingRecipe) {
-        const response = await recipeAPI.updateRecipe(editingRecipe._id, cleanedData);
-        const updatedRecipe = response.data;
+        // FIX: The API now returns the updated recipe object directly.
+        const updatedRecipe = await recipeAPI.updateRecipe(editingRecipe._id, cleanedData);
         setRecipes(recipes.map(recipe => 
           recipe._id === editingRecipe._id ? updatedRecipe : recipe
         ));
         setSelectedRecipe(updatedRecipe);
       } else {
-        const response = await recipeAPI.saveRecipe(cleanedData);
-        // FIX: Expect the new recipe object directly in response.data
-        const newRecipe = response.data;
+        // FIX: The API now returns the new recipe object directly.
+        const newRecipe = await recipeAPI.saveRecipe(cleanedData);
         setRecipes([...recipes, newRecipe]);
         setSelectedRecipe(newRecipe);
       }
@@ -108,7 +106,6 @@ const RecipeManager = () => {
     });
   };
 
-  // --- Helper functions for form arrays ---
   const handleArrayChange = (field, index, value) => {
     const newArray = [...formData[field]];
     newArray[index] = value;
@@ -120,7 +117,7 @@ const RecipeManager = () => {
   };
 
   const removeArrayItem = (field, index) => {
-    if (formData[field].length <= 1) return; // Prevent removing the last item
+    if (formData[field].length <= 1) return;
     setFormData({ ...formData, [field]: formData[field].filter((_, i) => i !== index) });
   };
 
@@ -161,7 +158,6 @@ const RecipeManager = () => {
         </button>
       </div>
 
-      {/* Search */}
       <div className="mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -176,7 +172,6 @@ const RecipeManager = () => {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Recipe List */}
         <div className="lg:col-span-1">
           <div className="bg-slate-800 rounded-xl p-6 max-h-[600px] overflow-y-auto">
             <h2 className="text-lg font-semibold text-white mb-4">
@@ -185,7 +180,7 @@ const RecipeManager = () => {
             
             {filteredRecipes.length === 0 ? (
               <p className="text-slate-400 text-center py-8">
-                {searchTerm ? 'No recipes found matching your search.' : 'No recipes saved yet.'}
+                {searchTerm ? 'No recipes found.' : 'No recipes saved yet.'}
               </p>
             ) : (
               <div className="space-y-3">
@@ -241,7 +236,6 @@ const RecipeManager = () => {
           </div>
         </div>
 
-        {/* Recipe Details / Form */}
         <div className="lg:col-span-2">
           {editingRecipe || showAddForm ? (
             <RecipeForm
@@ -274,7 +268,6 @@ const RecipeManager = () => {
 
 const RecipeDetails = ({ recipe }) => (
   <div className="bg-slate-800 rounded-xl p-6">
-    {/* FIX: Added image display */}
     {recipe.image && (
       <img src={recipe.image} alt={recipe.title} className="w-full h-64 object-cover rounded-lg mb-6" />
     )}
@@ -391,7 +384,6 @@ const RecipeForm = ({
         />
       </div>
 
-      {/* Other inputs */}
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-3">Ingredients *</label>
         <div className="space-y-2">
